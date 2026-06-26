@@ -46,7 +46,7 @@ mod marc;
 use std::f64;
 
 pub use json::{ClusterData, TRAINING_CLUSTERS};
-pub use marc::{BENCHMARK_MARC, TRAINING_MARC, similarities_between_records};
+pub use marc::{BENCHMARK_MARC, TRAINING_MARC, block, similarities_between_records};
 
 /// Represents a set of field probabilities for a record pair
 #[derive(Debug, Clone)]
@@ -204,16 +204,7 @@ impl FellegiSunterModel {
                 continue;
             }
 
-            let p_field_match = self.p_field_match[i];
-            let p_field_non_match = self.p_field_non_match[i];
-
-            // Probability that 2 field values will be the same when both records match
-            let agreement_weight = if p_field_non_match > 0.0 {
-                p_field_match / p_field_non_match
-            } else {
-                f64::INFINITY
-            }
-            .log2();
+            let agreement_weight = self.weights()[i];
 
             log_likelihood_ratio += agreement_weight + probabilities.probabilities[i];
             field_count += 1;
@@ -229,7 +220,7 @@ impl FellegiSunterModel {
         };
 
         // Return final score; normalize by number of fields compared to total available fields
-        let normalized_score = log_likelihood_ratio + prior_ratio.log2();
+        let normalized_score = log_likelihood_ratio + prior_ratio.ln();
 
         // Adjust for missing fields - if all fields are missing, return a default value
         if field_count == 0 {
@@ -252,5 +243,13 @@ impl FellegiSunterModel {
     /// Get the current prior probability of match
     pub fn get_prior_match(&self) -> f64 {
         self.prior_match
+    }
+
+    pub fn weights(&self) -> Vec<f64> {
+        self.get_p_field_match()
+            .iter()
+            .zip(self.get_p_field_non_match())
+            .map(|(m, u)| (m / (u + 0.000001)).ln())
+            .collect()
     }
 }
