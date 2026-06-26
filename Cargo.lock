@@ -66,6 +66,7 @@ dependencies = [
  "serde",
  "serde_json",
  "statrs",
+ "stop-words",
  "strsim",
 ]
 
@@ -447,6 +448,15 @@ checksum = "1e34b58a8f9b7462b6922e0b4e3c83d1b3c2075f7f996a56d6c66afa81590064"
 dependencies = [
  "nalgebra 0.19.0",
  "rand",
+]
+
+[[package]]
+name = "stop-words"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d68df56303396bcfb639455b3c166804aeb7994005010aab5e9e8a1277b8871d"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

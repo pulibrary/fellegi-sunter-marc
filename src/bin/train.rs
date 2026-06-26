@@ -8,7 +8,7 @@ use fellegi_sunter_marc::{
 };
 use itertools::Itertools;
 
-const THRESHOLD: f64 = 40.0;
+const THRESHOLD: f64 = 39.75;
 const FIELDS: usize = 12;
 
 fn main() {

@@ -3,6 +3,7 @@
 use core::f64;
 use std::sync::LazyLock;
 
+use itertools::Itertools;
 use marctk::Record;
 use strsim::{jaro_winkler, normalized_levenshtein, sorensen_dice};
 
@@ -146,13 +147,13 @@ fn sorensen_dice_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
 }
 
 fn normalize(s: &str) -> String {
-    s.trim()
-        .to_lowercase()
+    s.to_lowercase()
+        .split_whitespace()
+        .filter(|w| !stop_words::get(stop_words::LANGUAGE::English).contains(w))
+        .join(" ")
         .chars()
         .filter(|c| !c.is_ascii_punctuation())
         .collect::<String>()
-        .trim()
-        .to_string()
 }
 
 fn normalize_numeric(s: &str) -> String {
