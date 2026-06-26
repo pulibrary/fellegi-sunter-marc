@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use crate::{
     FieldProbabilities,
-    marc::{get_record, similarities_between_records},
+    marc::{get_training_record, similarities_between_records},
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ClusterData<'a> {
     #[serde(borrow)]
-    clusters: Vec<Vec<&'a str>>,
-    unclustered: Vec<&'a str>,
+    pub clusters: Vec<Vec<&'a str>>,
+    pub unclustered: Vec<&'a str>,
 }
 
 impl<'a> ClusterData<'a> {
@@ -19,8 +19,8 @@ impl<'a> ClusterData<'a> {
         let pairs = self.unclustered.iter().combinations(2);
         pairs
             .filter_map(|pair| {
-                let record_a = get_record(pair[0])?;
-                let record_b = get_record(pair[1])?;
+                let record_a = get_training_record(pair[0])?;
+                let record_b = get_training_record(pair[1])?;
                 Some(similarities_between_records(record_a, record_b))
             })
             .collect()
@@ -34,15 +34,13 @@ impl<'a> ClusterData<'a> {
             .flatten();
         pairs
             .filter_map(|pair| {
-                let record_a = get_record(pair[0])?;
-                let record_b = get_record(pair[1])?;
+                let record_a = get_training_record(pair[0])?;
+                let record_b = get_training_record(pair[1])?;
                 Some(similarities_between_records(record_a, record_b))
             })
             .collect()
     }
 }
 
-const TRAINING_CLUSTERS_RAW: &str = include_str!("../training_clusters.json");
-
 pub static TRAINING_CLUSTERS: LazyLock<ClusterData> =
-    LazyLock::new(|| serde_json::from_str(TRAINING_CLUSTERS_RAW).unwrap());
+    LazyLock::new(|| serde_json::from_str(include_str!("../training_clusters.json")).unwrap());

@@ -46,7 +46,7 @@ mod marc;
 use std::f64;
 
 pub use json::{ClusterData, TRAINING_CLUSTERS};
-pub use marc::{BENCHMARK_MARC, similarities_between_records};
+pub use marc::{BENCHMARK_MARC, TRAINING_MARC, similarities_between_records};
 
 /// Represents a set of field probabilities for a record pair
 #[derive(Debug, Clone)]
@@ -209,7 +209,7 @@ impl FellegiSunterModel {
 
             // Calculate ln(P(field|match)/P(field|non-match))
             // Handle edge cases for numerical stability
-            let likelihood_ratio = if p_field_non_match > 0.0 && p_field_match > 0.0 {
+            let weight = if p_field_non_match > 0.0 && p_field_match > 0.0 {
                 p_field_match / p_field_non_match
             } else if p_field_match > 0.0 {
                 f64::INFINITY
@@ -217,15 +217,10 @@ impl FellegiSunterModel {
                 0.0
             } else {
                 1.0 // Both are zero - no discrimination information
-            };
+            }
+            .log2();
 
-            let log_ratio = if likelihood_ratio > 0.0 {
-                likelihood_ratio.ln()
-            } else {
-                f64::NEG_INFINITY
-            };
-
-            log_likelihood_ratio += log_ratio;
+            log_likelihood_ratio += weight + (probabilities.probabilities[i] * 2.0);
             field_count += 1;
         }
 
@@ -239,7 +234,7 @@ impl FellegiSunterModel {
         };
 
         // Return final score; normalize by number of fields compared to total available fields
-        let normalized_score = log_likelihood_ratio + prior_ratio.ln();
+        let normalized_score = log_likelihood_ratio + prior_ratio.log2();
 
         // Adjust for missing fields - if all fields are missing, return a default value
         if field_count == 0 {
