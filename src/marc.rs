@@ -3,27 +3,54 @@
 use std::sync::LazyLock;
 
 use marctk::Record;
-use strsim::jaro_winkler;
+use strsim::{jaro_winkler, normalized_levenshtein};
 
 use crate::FieldProbabilities;
 
 pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilities {
     FieldProbabilities::new(vec![
-        subfield_similarity("245abp", a, b),
-        subfield_similarity("300a", a, b),
-        subfield_similarity("250a", a, b),
-        subfield_similarity("260a:264a", a, b),
-        subfield_similarity("260b:264b", a, b),
-        subfield_similarity("260c:264c", a, b),
-        subfield_similarity("245p", a, b),
-        subfield_similarity("245n", a, b),
-        subfield_similarity("245f", a, b),
-        subfield_similarity("100a:110a:111a:130a", a, b),
-        subfield_similarity("086", a, b),
+        exact_subfield_match("245a", a, b),
+        fuzzy_subfield_similarity("245abp", a, b),
+        fuzzy_subfield_similarity("300a", a, b),
+        fuzzy_subfield_similarity("250a", a, b),
+        fuzzy_subfield_similarity("260a:264a", a, b),
+        fuzzy_subfield_similarity("260b:264b", a, b),
+        fuzzy_subfield_similarity("260c:264c", a, b),
+        fuzzy_subfield_similarity("245p", a, b),
+        fuzzy_subfield_similarity("245n", a, b),
+        fuzzy_subfield_similarity("245f", a, b),
+        fuzzy_subfield_similarity("100a:110a:111a:130a", a, b),
+        fuzzy_subfield_similarity("086", a, b),
+        year_from_008_similarity(a, b),
     ])
 }
 
-fn subfield_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
+fn year_from_008_similarity(a: &Record, b: &Record) -> f64 {
+    match (
+        a.get_control_fields("008")
+            .first()
+            .and_then(|f| f.content().get(7..10)),
+        b.get_control_fields("008")
+            .first()
+            .and_then(|f| f.content().get(7..10)),
+    ) {
+        (Some(a), Some(b)) => normalized_levenshtein(a, b),
+        _ => f64::NAN,
+    }
+}
+
+fn exact_subfield_match(spec: &str, a: &Record, b: &Record) -> f64 {
+    match (
+        a.extract_values(spec).first().map(|a| normalize(a)),
+        b.extract_values(spec).first().map(|b| normalize(b)),
+    ) {
+        (Some(a), Some(b)) if a == b => 1.0,
+        (Some(_), Some(_)) => 0.0,
+        _ => f64::NAN,
+    }
+}
+
+fn fuzzy_subfield_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
     match (
         a.extract_values(spec).first().map(|a| normalize(a)),
         b.extract_values(spec).first().map(|b| normalize(b)),

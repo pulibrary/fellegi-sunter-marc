@@ -207,20 +207,15 @@ impl FellegiSunterModel {
             let p_field_match = self.p_field_match[i];
             let p_field_non_match = self.p_field_non_match[i];
 
-            // Calculate ln(P(field|match)/P(field|non-match))
-            // Handle edge cases for numerical stability
-            let weight = if p_field_non_match > 0.0 && p_field_match > 0.0 {
+            // Probability that 2 field values will be the same when both records match
+            let agreement_weight = if p_field_non_match > 0.0 {
                 p_field_match / p_field_non_match
-            } else if p_field_match > 0.0 {
-                f64::INFINITY
-            } else if p_field_non_match > 0.0 {
-                0.0
             } else {
-                1.0 // Both are zero - no discrimination information
+                f64::INFINITY
             }
             .log2();
 
-            log_likelihood_ratio += weight + (probabilities.probabilities[i] * 2.0);
+            log_likelihood_ratio += agreement_weight + probabilities.probabilities[i];
             field_count += 1;
         }
 
