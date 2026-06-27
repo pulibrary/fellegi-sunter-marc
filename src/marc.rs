@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 use itertools::Itertools;
 use marctk::Record;
-use strsim::{jaro_winkler, normalized_levenshtein, sorensen_dice};
+use strsim::{jaro_winkler, sorensen_dice};
 
 use crate::FieldProbabilities;
 
@@ -163,17 +163,25 @@ fn normalize_numeric(s: &str) -> String {
         .collect()
 }
 
-pub fn block(record: &Record) -> [char; 2] {
+pub fn block(record: &Record) -> [String; 3] {
     [
+        // Block on title (without English stopwords)
         record
             .extract_values("245a")
             .first()
-            .and_then(|title| title.chars().filter(|c| !c.is_whitespace()).next())
+            .map(|title| normalize(title))
             .unwrap_or_default(),
+        // Block on second and third digits (century and decade) of Date1
         record
             .get_control_fields("008")
             .first()
-            .and_then(|f| f.content().chars().nth(8))
+            .and_then(|f| f.content().get(8..10).map(|s| s.to_string()))
+            .unwrap_or_default(),
+        // Block on 008 language
+        record
+            .get_control_fields("008")
+            .first()
+            .and_then(|f| f.content().get(35..38).map(|s| s.to_string()))
             .unwrap_or_default(),
     ]
 }
@@ -221,5 +229,12 @@ mod tests {
             "the similarity gets dramatically lower when not an exact match"
         );
         assert!(fuzzy_numeric_match("264c", &a, &f) < 0.01);
+    }
+
+    #[test]
+    fn test_it_puts_different_decades_in_different_blocks() {
+        let a = Record::from_breaker("=008 731224s1972    ctua     bs   001 0 eng").unwrap();
+        let b = Record::from_breaker("=008 730424s1964    ctua     b    000 0 eng").unwrap();
+        assert!(block(&a) != block(&b))
     }
 }

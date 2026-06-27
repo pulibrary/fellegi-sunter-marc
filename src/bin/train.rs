@@ -8,16 +8,13 @@ use fellegi_sunter_marc::{
 };
 use itertools::Itertools;
 
-const THRESHOLD: f64 = 39.75;
-const FIELDS: usize = 12;
+const SCORE_THRESHOLD: f64 = 27.0;
+const FIELD_COUNT: usize = 12;
 
 fn main() {
-    // Create a new model with 3 fields
-    let mut model = FellegiSunterModel::new(FIELDS);
+    let mut model = FellegiSunterModel::new(FIELD_COUNT);
 
-    // Train the model with some sample data
     let matched_samples = TRAINING_CLUSTERS.clustered_similarities();
-
     let unmatched_samples = TRAINING_CLUSTERS.unclustered_similarities();
 
     model.train(&matched_samples, &unmatched_samples);
@@ -29,7 +26,7 @@ fn main() {
             let first_title = pair[0].extract_values("245a");
             let second_title = pair[1].extract_values("245a");
             let score = model.score(&similarities_between_records(pair[0], pair[1]));
-            if score > THRESHOLD {
+            if score > SCORE_THRESHOLD {
                 println!(
                     "Similarities between fields between {first_title:?} and {second_title:?}: {:?}",
                     similarities_between_records(pair[0], pair[1])
