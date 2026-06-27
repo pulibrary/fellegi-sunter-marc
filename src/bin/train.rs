@@ -8,8 +8,8 @@ use fellegi_sunter_marc::{
 };
 use itertools::Itertools;
 
-const SCORE_THRESHOLD: f64 = 27.0;
-const FIELD_COUNT: usize = 12;
+const SCORE_THRESHOLD: f64 = 41.5;
+const FIELD_COUNT: usize = 11;
 
 fn main() {
     let mut model = FellegiSunterModel::new(FIELD_COUNT);

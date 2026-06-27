@@ -15,7 +15,7 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         fuzzy_subfield_similarity("245abfnp", a, b),
         fuzzy_subfield_similarity("260a:264a", a, b),
         fuzzy_subfield_similarity("260b:264b", a, b),
-        fuzzy_numeric_match("086", a, b),
+        // fuzzy_numeric_match("086", a, b),
         fuzzy_numeric_match("250a", a, b),
         fuzzy_numeric_match("300c", a, b),
         exact_oclc_number_match(a, b),
@@ -36,7 +36,7 @@ fn year_from_008_similarity(a: &Record, b: &Record) -> f64 {
             .and_then(|f| f.content().get(7..11)),
     ) {
         (Some(a), Some(b)) => exponential_numeric_difference(a, b),
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -51,7 +51,7 @@ fn year_from_008_exact_match(a: &Record, b: &Record) -> f64 {
     ) {
         (Some(a), Some(b)) if a == b => 1.0,
         (Some(_), Some(_)) => 0.0,
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -62,7 +62,7 @@ fn exact_subfield_match(spec: &str, a: &Record, b: &Record) -> f64 {
     ) {
         (Some(a), Some(b)) if a == b => 1.0,
         (Some(_), Some(_)) => 0.0,
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -84,10 +84,10 @@ fn exact_oclc_number_match(a: &Record, b: &Record) -> f64 {
                     0.0
                 }
             } else {
-                f64::NAN
+                0.0
             }
         }
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -103,7 +103,7 @@ fn exact_number_match(spec: &str, a: &Record, b: &Record) -> f64 {
                 0.0
             }
         }
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -113,7 +113,7 @@ fn fuzzy_numeric_match(spec: &str, a: &Record, b: &Record) -> f64 {
         b.extract_values(spec).first(),
     ) {
         (Some(a), Some(b)) => exponential_numeric_difference(a, b),
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -122,7 +122,7 @@ fn exponential_numeric_difference(a: &str, b: &str) -> f64 {
     let parsed_b = normalize_numeric(b).parse::<usize>();
     match (parsed_a, parsed_b) {
         (Ok(pa), Ok(pb)) => f64::consts::E.powi(pa.abs_diff(pb) as i32 * -1),
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -132,7 +132,7 @@ fn fuzzy_subfield_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
         b.extract_values(spec).first().map(|b| normalize(b)),
     ) {
         (Some(a), Some(b)) => jaro_winkler(&a, &b),
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
@@ -142,7 +142,7 @@ fn sorensen_dice_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
         b.extract_values(spec).first().map(|b| normalize(b)),
     ) {
         (Some(a), Some(b)) => sorensen_dice(&a, &b),
-        _ => f64::NAN,
+        _ => 0.0,
     }
 }
 
