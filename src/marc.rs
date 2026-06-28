@@ -23,6 +23,7 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         exact_number_match("260c:264c", a, b),
         exact_number_match("300a", a, b),
         year_from_008_similarity(a, b),
+        fuzzy_concat_similarity("500a", a, b),
     ])
 }
 
@@ -134,6 +135,19 @@ fn fuzzy_subfield_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
         (Some(a), Some(b)) => jaro_winkler(&a, &b),
         _ => 0.0,
     }
+}
+
+fn fuzzy_concat_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
+    sorensen_dice(
+        &a.extract_values(spec)
+            .into_iter()
+            .map(|s| normalize(s))
+            .join(" "),
+        &b.extract_values(spec)
+            .into_iter()
+            .map(|s| normalize(s))
+            .join(" "),
+    )
 }
 
 fn publisher_fuzzy_similarity(a: &Record, b: &Record) -> f64 {
