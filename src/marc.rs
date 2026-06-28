@@ -14,7 +14,7 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         fuzzy_subfield_similarity("100a:110a:111a:130a", a, b),
         fuzzy_subfield_similarity("245abfnp", a, b),
         fuzzy_subfield_similarity("260a:264a", a, b),
-        fuzzy_subfield_similarity("260b:264b", a, b),
+        publisher_fuzzy_similarity(a, b),
         // fuzzy_numeric_match("086", a, b),
         fuzzy_numeric_match("250a", a, b),
         fuzzy_numeric_match("300c", a, b),
@@ -136,6 +136,20 @@ fn fuzzy_subfield_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
     }
 }
 
+fn publisher_fuzzy_similarity(a: &Record, b: &Record) -> f64 {
+    match (
+        a.extract_values("260b:264b")
+            .first()
+            .map(|a| normalize_publisher(a)),
+        b.extract_values("260b:264b")
+            .first()
+            .map(|b| normalize_publisher(b)),
+    ) {
+        (Some(a), Some(b)) => jaro_winkler(&a, &b),
+        _ => 0.0,
+    }
+}
+
 fn sorensen_dice_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
     match (
         a.extract_values(spec).first().map(|a| normalize(a)),
@@ -163,6 +177,23 @@ fn normalize_numeric(s: &str) -> String {
         .collect()
 }
 
+fn normalize_publisher(s: &str) -> String {
+    s.to_lowercase()
+        .split_whitespace()
+        .filter(|w| {
+            !stop_words::get(stop_words::LANGUAGE::English).contains(w)
+                && !PUBLISHER_STOP_PREFIXES
+                    .iter()
+                    .any(|prefix| w.starts_with(prefix))
+        })
+        .join(" ")
+        .chars()
+        .filter(|c| !c.is_ascii_punctuation())
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
 pub fn block(record: &Record) -> [String; 3] {
     [
         // Block on title (without English stopwords)
@@ -187,11 +218,9 @@ pub fn block(record: &Record) -> [String; 3] {
 }
 
 pub fn get_training_record(id: &str) -> Option<&Record> {
-    TRAINING_MARC.iter().find(|r| {
-        r.get_control_fields("001")
-            .iter()
-            .any(|f| f.content() == id)
-    })
+    TRAINING_MARC
+        .iter()
+        .find(|r| get_id(r).is_some_and(|record_id| id == record_id))
 }
 
 pub static TRAINING_MARC: LazyLock<Vec<Record>> = LazyLock::new(|| {
@@ -205,6 +234,15 @@ pub static BENCHMARK_MARC: LazyLock<Vec<Record>> = LazyLock::new(|| {
         .filter_map(|r| r.ok())
         .collect()
 });
+
+fn get_id(record: &Record) -> Option<&str> {
+    record
+        .get_control_fields("001")
+        .first()
+        .map(|t| t.content())
+}
+
+const PUBLISHER_STOP_PREFIXES: [&str; 3] = ["editor", "publi", "verlag"];
 
 #[cfg(test)]
 mod tests {
@@ -236,5 +274,21 @@ mod tests {
         let a = Record::from_breaker("=008 731224s1972    ctua     bs   001 0 eng").unwrap();
         let b = Record::from_breaker("=008 730424s1964    ctua     b    000 0 eng").unwrap();
         assert!(block(&a) != block(&b))
+    }
+
+    #[test]
+    fn test_normalize_publisher() {
+        assert_eq!(
+            normalize_publisher("Editorial Sudamericana, "),
+            String::from("sudamericana")
+        )
+    }
+
+    #[test]
+    fn test_oclc_exact_number_match() {
+        let a = Record::from_breaker("=035 \\$a(OCoLC)40546506").unwrap();
+        let b = Record::from_breaker("=035 \\$a(OCoLC)40546502 ").unwrap();
+        assert_eq!(exact_oclc_number_match(&a, &a), 1.0);
+        assert_eq!(exact_oclc_number_match(&a, &b), 0.0);
     }
 }
