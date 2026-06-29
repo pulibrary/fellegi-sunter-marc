@@ -19,6 +19,7 @@ itertools = "0.15.0"
 diacritics = "0.2.2"
 regex = "1.1.1"
 library_stdnums = "0.1.0"
+whitespace-sifter = "2.3.7"
 
 [profile.profiling]
 inherits = "release"

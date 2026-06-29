@@ -9,6 +9,7 @@ use library_stdnums::{isbn::ISBN, lccn::LCCN, traits::Normalize};
 use marctk::Record;
 use regex::Regex;
 use strsim::{jaro_winkler, sorensen_dice};
+use whitespace_sifter::WhitespaceSifter;
 
 use crate::FieldProbabilities;
 
@@ -190,7 +191,19 @@ fn month_cataloged_fuzzy_match(a: &Record, b: &Record) -> f64 {
             .first()
             .and_then(|f| f.content().get(0..4)),
     ) {
-        (Some(a), Some(b)) => exponential_numeric_difference(a, b),
+        (Some(a), Some(b)) => {
+            // TODO: the difference between 9912 (December 1999) and 0001 (January 2000) is represented as huge
+            // when it should not be that far of a difference actually
+            let year_a = &a[0..2];
+            let year_b = &b[0..2];
+            let month_a = &a[2..4];
+            let month_b = &b[2..4];
+            let combined_months_a: usize =
+                (year_a.parse::<usize>().unwrap() * 12) + month_a.parse::<usize>().unwrap();
+            let combined_months_b: usize =
+                (year_b.parse::<usize>().unwrap() * 12) + month_b.parse::<usize>().unwrap();
+            f64::consts::E.powf(combined_months_a.abs_diff(combined_months_b) as f64 * -0.3)
+        }
         _ => 0.0,
     }
 }
@@ -219,13 +232,9 @@ fn exponential_numeric_difference(a: &str, b: &str) -> f64 {
 }
 
 fn fuzzy_subfield_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
-    match (
-        a.extract_values(spec).first().map(|a| normalize(a)),
-        b.extract_values(spec).first().map(|b| normalize(b)),
-    ) {
-        (Some(a), Some(b)) => jaro_winkler(&a, &b),
-        _ => 0.0,
-    }
+    let normalized_a = normalize(&a.extract_values(spec).iter().join(" "));
+    let normalized_b = normalize(&b.extract_values(spec).iter().join(" "));
+    jaro_winkler(&normalized_a, &normalized_b)
 }
 
 fn fuzzy_concat_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
@@ -287,7 +296,7 @@ fn sorensen_dice_similarity(spec: &str, a: &Record, b: &Record) -> f64 {
 }
 
 fn normalize(s: &str) -> String {
-    remove_diacritics(
+    WhitespaceSifter::sift(&remove_diacritics(
         &s.to_lowercase()
             .split_whitespace()
             .filter(|w| !stop_words::get(stop_words::LANGUAGE::English).contains(w))
@@ -295,7 +304,7 @@ fn normalize(s: &str) -> String {
             .chars()
             .filter(|c| !c.is_ascii_punctuation())
             .collect::<String>(),
-    )
+    ))
 }
 
 fn normalize_numeric(s: &str) -> String {
@@ -456,11 +465,25 @@ mod tests {
 
     #[test]
     fn test_similarities() {
-        let a = get_benchmark_record("SCSB-6741859").unwrap();
-        let b = get_benchmark_record("9975877783506421").unwrap();
+        let a = get_benchmark_record("9965486343506421").unwrap();
+        let b = get_benchmark_record("SCSB-12039235").unwrap();
         assert_eq!(
             similarities_between_records(&a, &b),
             FieldProbabilities::new([0.5; 23].to_vec())
         )
+    }
+
+    #[test]
+    fn it_can_normalize_titles_with_different_subfields() {
+        let a = Record::from_breaker(
+            "=245 10$aVocabulaire illustré de la Grande guerre : $b 1914-1918 / $c Joël Meyniel.",
+        )
+        .unwrap();
+        let b = Record::from_breaker(
+            "=245 10$aVocabulaire illustré de la grande guerre, 1914-1918 / $c Joël Meyniel.",
+        )
+        .unwrap();
+
+        assert_eq!(fuzzy_subfield_similarity("245abfnp", &a, &b), 1.0);
     }
 }
