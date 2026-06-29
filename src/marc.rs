@@ -14,7 +14,7 @@ use crate::FieldProbabilities;
 
 pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilities {
     FieldProbabilities::new(vec![
-        fuzzy_subfield_similarity("100a:110a:111a:130a", a, b),
+        fuzzy_subfield_similarity("100a:110ab:111a:130a", a, b),
         fuzzy_subfield_similarity("245abfnp", a, b),
         publisher_fuzzy_similarity(a, b),
         edition_fuzzy_similarity(a, b),
@@ -26,7 +26,7 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         exact_isbn_match(a, b),
         exact_subfield_match("050ab", a, b),
         exact_number_match("260c:264c", a, b),
-        exact_number_match("830v:490v", a, b),
+        exact_number_match("830v:490av", a, b),
         page_number_similarity(a, b),
         year_from_008_similarity(a, b),
         fuzzy_concat_similarity("500a", a, b),
