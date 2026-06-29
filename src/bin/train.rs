@@ -1,16 +1,16 @@
-//! Example usage of the Fellegi-Sunter model
+//! Train on training data and attempt the benchmark
 
 use std::{fs::File, io::Write};
 
 use fellegi_sunter_marc::{
-    BENCHMARK_MARC, ClusterData, FellegiSunterModel, TRAINING_CLUSTERS, block,
+    BENCHMARK_MARC, ClusterData, FellegiSunterModel, TRAINING_CLUSTERS, block, get_id,
     similarities_between_records,
 };
 use itertools::Itertools;
 
 // A higher threshold is stricter (fewer matches), lower threshold is more permissive (more matches)
-const SCORE_THRESHOLD: f64 = 39.1;
-const FIELD_COUNT: usize = 12;
+const SCORE_THRESHOLD: f64 = 10.0;
+const FIELD_COUNT: usize = 21;
 
 fn main() {
     let mut model = FellegiSunterModel::new(FIELD_COUNT);
@@ -27,28 +27,18 @@ fn main() {
             let first_title = pair[0].extract_values("245a");
             let second_title = pair[1].extract_values("245a");
             let score = model.score(&similarities_between_records(pair[0], pair[1]));
+            println!("score {score}");
             if score > SCORE_THRESHOLD {
                 println!(
-                    "Similarities between fields between {first_title:?} and {second_title:?}: {:?}",
+                    "Similarities between fields between {first_title:?} ({:?}) and {second_title:?} ({:?}): {:?}",
+                    get_id(pair[0]),
+                    get_id(pair[1]),
                     similarities_between_records(pair[0], pair[1])
                 );
                 println!("Score {first_title:?} and {second_title:?}: {score}");
                 // println!("Probability match {first_title:?} and {second_title:?}: {probability}");
 
-                let a_id = pair[0]
-                    .get_control_fields("001")
-                    .iter()
-                    .map(|f| f.content())
-                    .next();
-                let b_id = pair[1]
-                    .get_control_fields("001")
-                    .iter()
-                    .map(|f| f.content())
-                    .next();
-                if (a_id.is_some_and(|id| id == "SCSB-3634720") && b_id.is_some_and(|id| id == "SCSB-10119371")) || a_id.is_some_and(|id| id == "SCSB-10119371") && b_id.is_some_and(|id| id == "SCSB-3634720") {
-                    model.weights();
-                }
-                match (a_id, b_id) {
+                match (get_id(pair[0]), get_id(pair[1])) {
                     (Some(a), Some(b)) => {
                         found_clusters.push(vec![a, b]);
                     }
@@ -59,7 +49,8 @@ fn main() {
     });
     println!("P(field|match): {:?}", model.get_p_field_match());
     println!("P(field|non-match): {:?}", model.get_p_field_non_match());
-    println!("Field weigths: {:?}", model.weights());
+    println!("Field match weigths: {:?}", model.match_weights());
+    println!("Field unmatch weigths: {:?}", model.unmatch_weights());
     println!("Prior match: {}", model.get_prior_match());
 
     let mut file = File::create("output.json").unwrap();

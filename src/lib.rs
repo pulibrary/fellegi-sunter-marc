@@ -43,13 +43,11 @@
 mod json;
 mod marc;
 
-use std::f64;
-
 pub use json::{ClusterData, TRAINING_CLUSTERS};
-pub use marc::{BENCHMARK_MARC, TRAINING_MARC, block, similarities_between_records};
+pub use marc::{BENCHMARK_MARC, TRAINING_MARC, block, get_id, similarities_between_records};
 
 /// Represents a set of field probabilities for a record pair
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FieldProbabilities {
     /// Vector of probabilities for each field. Use f64::NAN to represent missing/None values.
     pub probabilities: Vec<f64>,
@@ -125,9 +123,19 @@ impl FellegiSunterModel {
         matched_samples: &[FieldProbabilities],
         unmatched_samples: &[FieldProbabilities],
     ) {
-        // Validate inputs
         if matched_samples.is_empty() && unmatched_samples.is_empty() {
             return; // Nothing to train on
+        }
+
+        if matched_samples.first().unwrap().len() != self.num_fields
+            || unmatched_samples.first().unwrap().len() != self.num_fields
+        {
+            panic!(
+                "Model expects {}-dimension vector, inputs had {} and {} dimensions respectively",
+                self.num_fields,
+                matched_samples.first().unwrap().len(),
+                unmatched_samples.first().unwrap().len(),
+            );
         }
 
         // Update field probabilities for matched pairs
@@ -196,18 +204,14 @@ impl FellegiSunterModel {
 
         // Calculate likelihood ratio for each field (excluding missing fields)
         let mut log_likelihood_ratio = 0.0;
-        let mut field_count = 0; // Count of fields that are not missing
 
         for i in 0..self.num_fields {
-            // Skip missing fields
             if probabilities.probabilities[i].is_nan() {
                 continue;
             }
 
-            let agreement_weight = self.weights()[i];
-
-            log_likelihood_ratio += agreement_weight + probabilities.probabilities[i];
-            field_count += 1;
+            log_likelihood_ratio += (probabilities.probabilities[i] * self.match_weights()[i])
+                + ((1.0 - probabilities.probabilities[i]) * self.unmatch_weights()[i]);
         }
 
         // Apply prior probability adjustment
@@ -219,15 +223,7 @@ impl FellegiSunterModel {
             0.0
         };
 
-        // Return final score; normalize by number of fields compared to total available fields
-        let normalized_score = log_likelihood_ratio + prior_ratio.ln();
-
-        // Adjust for missing fields - if all fields are missing, return a default value
-        if field_count == 0 {
-            0.0 // No actual comparisons were made
-        } else {
-            normalized_score
-        }
+        log_likelihood_ratio + prior_ratio.ln()
     }
 
     /// Get the current probability of matching for each field
@@ -245,11 +241,33 @@ impl FellegiSunterModel {
         self.prior_match
     }
 
-    pub fn weights(&self) -> Vec<f64> {
+    pub fn match_weights(&self) -> Vec<f64> {
         self.get_p_field_match()
             .iter()
             .zip(self.get_p_field_non_match())
-            .map(|(m, u)| (m / (u + 0.000001)).ln())
+            .map(|(m, u)| {
+                if m == &0.0 {
+                    VERY_SMALL_WEIGHT
+                } else {
+                    (m / (u + DONT_DIVIDE_BY_ZERO)).ln()
+                }
+            })
+            .collect()
+    }
+    pub fn unmatch_weights(&self) -> Vec<f64> {
+        self.get_p_field_match()
+            .iter()
+            .zip(self.get_p_field_non_match())
+            .map(|(m, u)| {
+                if m == &1.0 {
+                    VERY_SMALL_WEIGHT
+                } else {
+                    ((1.0 - m) / (1.0 + DONT_DIVIDE_BY_ZERO - u)).ln()
+                }
+            })
             .collect()
     }
 }
+
+const DONT_DIVIDE_BY_ZERO: f64 = 0.0000001;
+const VERY_SMALL_WEIGHT: f64 = 50.0;
