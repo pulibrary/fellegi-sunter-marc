@@ -33,10 +33,10 @@ impl<'a> ClusterData<'a> {
             .map(|cluster| cluster.iter().combinations(2))
             .flatten();
         pairs
-            .filter_map(|pair| {
-                let record_a = get_training_record(pair[0])?;
-                let record_b = get_training_record(pair[1])?;
-                Some(similarities_between_records(record_a, record_b))
+            .map(|pair| {
+                let record_a = get_training_record(pair[0]).unwrap();
+                let record_b = get_training_record(pair[1]).unwrap();
+                similarities_between_records(record_a, record_b)
             })
             .collect()
     }

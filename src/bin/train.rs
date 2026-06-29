@@ -9,8 +9,8 @@ use fellegi_sunter_marc::{
 use itertools::Itertools;
 
 // A higher threshold is stricter (fewer matches), lower threshold is more permissive (more matches)
-const SCORE_THRESHOLD: f64 = 10.0;
-const FIELD_COUNT: usize = 21;
+const SCORE_THRESHOLD: f64 = 15.0;
+const FIELD_COUNT: usize = 23;
 
 fn main() {
     let mut model = FellegiSunterModel::new(FIELD_COUNT);
@@ -27,7 +27,7 @@ fn main() {
             let first_title = pair[0].extract_values("245a");
             let second_title = pair[1].extract_values("245a");
             let score = model.score(&similarities_between_records(pair[0], pair[1]));
-            println!("score {score}");
+            // println!("score {score}");
             if score > SCORE_THRESHOLD {
                 println!(
                     "Similarities between fields between {first_title:?} ({:?}) and {second_title:?} ({:?}): {:?}",

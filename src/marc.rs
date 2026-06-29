@@ -26,6 +26,7 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         exact_isbn_match(a, b),
         exact_subfield_match("050ab", a, b),
         exact_number_match("260c:264c", a, b),
+        exact_number_match("830v:490v", a, b),
         page_number_similarity(a, b),
         year_from_008_similarity(a, b),
         fuzzy_concat_similarity("500a", a, b),
@@ -34,7 +35,7 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         exact_subfield_match("042a", a, b),
         month_cataloged_fuzzy_match(a, b),
         place_of_publication_008_exact_match(a, b),
-        // bib_level_exact_match(a, b),
+        bib_level_exact_match(a, b),
         // SCSB fields that are expected to have NEGATIVE match weights,
         // i.e., if a pair of records have the same value for both, it is
         // likelier that they are _not_ duplicates.
