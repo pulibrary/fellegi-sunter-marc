@@ -9,7 +9,7 @@ use fellegi_sunter_marc::{
 use itertools::Itertools;
 
 // A higher threshold is stricter (fewer matches), lower threshold is more permissive (more matches)
-const SCORE_THRESHOLD: f64 = 15.0;
+const SCORE_THRESHOLD: f64 = 14.0;
 const FIELD_COUNT: usize = 23;
 
 fn main() {
