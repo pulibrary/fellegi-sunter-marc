@@ -9,8 +9,8 @@ use fellegi_sunter_marc::{
 use itertools::Itertools;
 
 // A higher threshold is stricter (fewer matches), lower threshold is more permissive (more matches)
-const SCORE_THRESHOLD: f64 = 14.0;
-const FIELD_COUNT: usize = 23;
+const SCORE_THRESHOLD: f64 = 12.0;
+const FIELD_COUNT: usize = 22;
 
 fn main() {
     let mut model = FellegiSunterModel::new(FIELD_COUNT);

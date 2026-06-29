@@ -26,10 +26,9 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         exact_lccn_match(a, b),
         exact_isbn_match(a, b),
         exact_subfield_match("050ab", a, b),
-        exact_number_match("260c:264c", a, b),
         exact_number_match("830v:490av", a, b),
         page_number_similarity(a, b),
-        year_from_008_similarity(a, b),
+        pub_year_similarity(a, b),
         fuzzy_concat_similarity("500a", a, b),
         fuzzy_concat_similarity("505art", a, b),
         exact_subfield_match("040a", a, b),
@@ -47,14 +46,16 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
     ])
 }
 
-fn year_from_008_similarity(a: &Record, b: &Record) -> f64 {
+fn pub_year_similarity(a: &Record, b: &Record) -> f64 {
     match (
         a.get_control_fields("008")
             .first()
-            .and_then(|f| f.content().get(7..11)),
+            .and_then(|f| f.content().get(7..11))
+            .or(a.extract_values("264c:260c").first().map(|v| &**v)),
         b.get_control_fields("008")
             .first()
-            .and_then(|f| f.content().get(7..11)),
+            .and_then(|f| f.content().get(7..11))
+            .or(b.extract_values("264c:260c").first().map(|v| &**v)),
     ) {
         (Some(a), Some(b)) => exponential_numeric_difference(a, b),
         _ => 0.0,
@@ -268,10 +269,10 @@ fn edition_fuzzy_similarity(a: &Record, b: &Record) -> f64 {
     match (
         a.extract_values("250a")
             .first()
-            .map(|a| normalize_publisher(a)),
+            .map(|a| normalize_edition(a)),
         b.extract_values("250a")
             .first()
-            .map(|b| normalize_publisher(b)),
+            .map(|b| normalize_edition(b)),
     ) {
         (Some(a), Some(b)) => jaro_winkler(&a, &b),
         _ => 0.0,
@@ -334,21 +335,21 @@ fn normalize_publisher(s: &str) -> String {
 }
 
 fn normalize_edition(s: &str) -> String {
-    remove_diacritics(
-        s.to_lowercase()
-            .split_whitespace()
-            .filter(|w| {
-                !stop_words::get(stop_words::LANGUAGE::English).contains(w)
-                    && !PUBLISHER_STOP_PREFIXES
-                        .iter()
-                        .any(|prefix| w.starts_with(prefix))
-            })
-            .join(" ")
-            .chars()
-            .filter(|c| !c.is_ascii_punctuation())
-            .collect::<String>()
-            .trim(),
-    )
+    s.to_lowercase()
+        .split_whitespace()
+        .map(|w| remove_diacritics(w))
+        .filter(|w| {
+            !stop_words::get(stop_words::LANGUAGE::English).contains(&w.as_str())
+                && !EDITION_STOP_PREFIXES
+                    .iter()
+                    .any(|prefix| w.starts_with(prefix))
+        })
+        .join(" ")
+        .chars()
+        .filter(|c| !c.is_ascii_punctuation())
+        .collect::<String>()
+        .trim()
+        .to_owned()
 }
 
 pub fn block(record: &Record) -> [String; 3] {
@@ -406,7 +407,7 @@ pub fn get_id(record: &Record) -> Option<&str> {
 }
 
 const PUBLISHER_STOP_PREFIXES: [&str; 5] = ["editor", "publi", "verlag", "press", "imprint"];
-const EDITION_STOP_PREFIXES: [&str; 2] = ["editi", "edic"];
+const EDITION_STOP_PREFIXES: [&str; 3] = ["editi", "edic", "basım"];
 
 #[cfg(test)]
 mod tests {
