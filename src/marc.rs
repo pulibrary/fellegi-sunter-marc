@@ -18,7 +18,7 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
         fuzzy_subfield_similarity("245abfnp", a, b),
         publisher_fuzzy_similarity(a, b),
         edition_fuzzy_similarity(a, b),
-        exact_number_match("086", a, b),
+        exact_number_match("086a", a, b),
         fuzzy_subfield_similarity("300b", a, b),
         fuzzy_numeric_match("300c", a, b),
         exact_oclc_number_match(a, b),

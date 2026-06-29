@@ -47,8 +47,6 @@ fn main() {
             }
         }
     });
-    println!("P(field|match): {:?}", model.get_p_field_match());
-    println!("P(field|non-match): {:?}", model.get_p_field_non_match());
     println!("Field match weigths: {:?}", model.match_weights());
     println!("Field unmatch weigths: {:?}", model.unmatch_weights());
     println!("Prior match: {}", model.get_prior_match());
