@@ -44,7 +44,9 @@ mod json;
 mod marc;
 
 pub use json::{ClusterData, TRAINING_CLUSTERS};
-pub use marc::{BENCHMARK_MARC, TRAINING_MARC, block, get_id, similarities_between_records};
+pub use marc::{
+    BENCHMARK_MARC, TRAINING_MARC, block, get_id, pub_year, similarities_between_records,
+};
 
 /// Represents a set of field probabilities for a record pair
 #[derive(Debug, Clone, PartialEq)]

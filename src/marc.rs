@@ -47,33 +47,18 @@ pub fn similarities_between_records(a: &Record, b: &Record) -> FieldProbabilitie
 }
 
 fn pub_year_similarity(a: &Record, b: &Record) -> f64 {
-    match (
-        a.get_control_fields("008")
-            .first()
-            .and_then(|f| f.content().get(7..11))
-            .or(a.extract_values("264c:260c").first().map(|v| &**v)),
-        b.get_control_fields("008")
-            .first()
-            .and_then(|f| f.content().get(7..11))
-            .or(b.extract_values("264c:260c").first().map(|v| &**v)),
-    ) {
+    match (pub_year(a), pub_year(b)) {
         (Some(a), Some(b)) => exponential_numeric_difference(a, b),
         _ => 0.0,
     }
 }
 
-fn year_from_008_exact_match(a: &Record, b: &Record) -> f64 {
-    match (
-        a.get_control_fields("008")
-            .first()
-            .and_then(|f| f.content().get(7..11)),
-        b.get_control_fields("008")
-            .first()
-            .and_then(|f| f.content().get(7..11)),
-    ) {
-        (Some(a), Some(b)) if a == b => 1.0,
-        _ => 0.0,
-    }
+pub fn pub_year(record: &Record) -> Option<&str> {
+    record
+        .get_control_fields("008")
+        .first()
+        .and_then(|f| f.content().get(7..11))
+        .or(record.extract_values("264c:260c").first().map(|v| &**v))
 }
 
 fn exact_subfield_match(spec: &str, a: &Record, b: &Record) -> f64 {
