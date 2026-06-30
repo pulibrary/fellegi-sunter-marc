@@ -1,7 +1,7 @@
 //! This module is responsible for converting a pair of MARC records into a FieldProbabilities
 
 use core::f64;
-use std::sync::LazyLock;
+use std::{cmp::max, sync::LazyLock};
 
 use diacritics::remove_diacritics;
 use itertools::Itertools;
@@ -111,8 +111,11 @@ fn exact_isbn_match(a: &Record, b: &Record) -> f64 {
         .iter()
         .filter_map(|isbn| ISBN::new(*isbn).normalize())
         .collect();
-    if a.iter().any(|isbn| b.contains(&isbn)) {
-        1.0
+    let max_possible_matches = max(a.len(), b.len());
+    if max_possible_matches > 0 {
+        a.iter()
+            .fold(0, |acc, isbn| if b.contains(isbn) { acc + 1 } else { acc }) as f64
+            / max_possible_matches as f64
     } else {
         0.0
     }
@@ -407,7 +410,7 @@ pub fn get_id(record: &Record) -> Option<&str> {
 }
 
 const PUBLISHER_STOP_PREFIXES: [&str; 5] = ["editor", "publi", "verlag", "press", "imprint"];
-const EDITION_STOP_PREFIXES: [&str; 3] = ["editi", "edic", "basım"];
+const EDITION_STOP_PREFIXES: [&str; 4] = ["aufl", "editi", "edic", "basım"];
 
 #[cfg(test)]
 mod tests {
